@@ -4,12 +4,24 @@
 Written against nvmath-python 1.0.1 WITHOUT access to an NVIDIA GPU: the API calls follow the nvmath source, but
 the code has not run. NVIDIA: please correct what needs correcting.
 
-Two methods, both refined against J on the CPU by factorbench's RefinedSolver (so the accuracy is measured the
-same way for every method):
+Two methods:
 
   cudss          LU of J (matrix type GENERAL).
   cudss_normal   Cholesky of the normal equations J'J (matrix type SPD, upper triangle), J scaled first - the same
                  formulation as the 'normal' method (PARDISO) that MAKRO uses now.
+
+How one right hand side b is solved, the same for every method in factorbench:
+
+  1. cuDSS (GPU): the factorization is made once; each solve is one forward and back substitution, which gives a
+     first x.
+  2. Refinement (CPU, the RefinedSolver base class): the residual r = b - J x is computed with the original J. If
+     max|r| / max|b| is above refine_tol, cuDSS solves once more with r and the correction is added to x; this
+     repeats until the residual is small enough. Plain iterative refinement - no GMRES.
+  3. GMRES only with krylov=True: it then replaces step 2, with the cuDSS factorization as preconditioner.
+
+Why the refinement is ours and not cuDSS's: cudss_normal factorizes J'J, not J, so its x has to be corrected
+against J itself; and doing it in the same code for every method makes their accuracy comparable. cuDSS's own
+refinement (ir_steps) is not used unless that option is given.
 
 Options (``--opt name=value`` on the command line):
   hybrid=True          keep the factors in host memory (cuDSS hybrid memory mode) when they do not fit on the GPU
@@ -18,8 +30,9 @@ Options (``--opt name=value`` on the command line):
   matching='MAX_DIAG_PRODUCT' | ...   (cudss only) a matching (MC64-like) before the ordering - J has many zero
                        diagonals (MAKRO: 26,300 of 1,547,200 rows, about 1/60), which static pivoting alone handles badly
   pivot_eps=1e-13, pivot_type='PIVOT_GLOBAL_ROW' | ...
-  ir_steps=0           cuDSS's own iterative refinement steps (factorbench refines anyway)
-  refine_tol, krylov   as for the other methods
+  ir_steps=2           cuDSS's own iterative refinement steps on the GPU (in addition to step 2 above)
+  refine_tol=1e-6      the relative residual the refinement aims for (default 1e-11)
+  krylov=True          GMRES instead of plain refinement (step 3)
 
 Note on the data path: J and every b are numpy/scipy (host) arrays, so each solve copies b to the GPU and x back.
 For the Newton use that is the realistic case (ModelFlow evaluates the model on the CPU).

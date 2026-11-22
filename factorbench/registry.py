@@ -15,7 +15,7 @@ factorization (one call per Newton iteration). Optional, used by the benchmark w
 
 The easy way is a subclass of ``RefinedSolver`` (factorbench/modelfactorize.py): implement ``_factorize()``
 (factorize self.A) and ``_apply(r)`` (the approximate solution of J x = r). Refinement against J, GMRES
-(krylov=True), stall detection and the accuracy checks come with it. See methods/template.py.
+(krylov=True), stall detection and the accuracy checks come with it. See methods/example.py.
 
 Methods are found in three places:
   * the built-in methods below (each in factorbench/methods/<module>.py, imported only when used)

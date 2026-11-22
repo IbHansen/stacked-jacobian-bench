@@ -2,10 +2,10 @@
 """
 to_mtx.py - write a case in Matrix Market format, for solvers outside Python (and the SuiteSparse conventions).
 
-    python tools/to_mtx.py makro10            -> data/makro10/mtx/A.mtx, b_00.mtx, ..., x_00.mtx, ...
+    python tools/to_mtx.py makro100           -> data/makro100/mtx/A.mtx, b_00.mtx, ..., x_00.mtx, ...
 
 A.mtx is a 'coordinate real general' matrix, the vectors are 'array real general' n x 1. The text files are
-several times larger than the npz/npy files (makro100: about 0.4 GB for A).
+several times larger than the npz/npy files (makro100: 0.28 GB for A, 0.83 GB with all vectors).
 """
 import sys
 from pathlib import Path

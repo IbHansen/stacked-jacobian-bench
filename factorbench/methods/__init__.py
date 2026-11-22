@@ -1,1 +1,1 @@
-"""Factorization methods. See ../registry.py and template.py."""
+"""Factorization methods. See ../registry.py and example.py."""

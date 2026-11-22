@@ -44,31 +44,122 @@ a GPU for example, could pay off.
 
 ## Install (pip only)
 
-Python 3.10 or newer.
+Python 3.10 or newer. This installs what is needed to run the reference method (`normal`: numpy, scipy, psutil and
+MKL PARDISO) and downloads the matrix (150 MB zip, 225 MB unpacked, checksum-verified).
+
+Windows:
 
 ```
 git clone https://github.com/IbHansen/stacked-jacobian-bench
 cd stacked-jacobian-bench
 python -m venv .venv
-.venv\Scripts\activate            # Linux/macOS: source .venv/bin/activate
-pip install -e .                  # numpy, scipy, psutil: the method 'superlu'
-pip install -e .[pardiso]         # + MKL PARDISO: the methods 'normal' and 'pardiso' (the reference)
-pip install -e .[gpu]             # + NVIDIA cuDSS through nvmath-python: 'cudss' and 'cudss_normal' (CUDA 12)
-pip install -e .[mumps]           # + MUMPS (pip wheels for Linux/macOS)
-python get_data.py                # downloads the matrix: 150 MB zip, 225 MB unpacked, checksum-verified
+.venv\Scripts\activate
+pip install -e .[pardiso]
+python get_data.py
 ```
 
-`setup_env.bat` / `setup_env.sh` run these steps (`setup_env.sh gpu` adds the GPU packages).
+Linux / macOS:
+
+```
+git clone https://github.com/IbHansen/stacked-jacobian-bench
+cd stacked-jacobian-bench
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .[pardiso]
+python get_data.py
+```
+
+Then add what your own method needs. For the NVIDIA cuDSS methods (CUDA 12) that is `pip install -e .[gpu]`,
+or `.[gpu13]` for CUDA 13. `setup_env.bat` and `setup_env.sh` do the same steps, after the clone (`setup_env.sh gpu`
+adds the GPU packages).
+
+## Create a solver
+
+The repository has a complete working method in one file, `factorbench/methods/example.py`. Run it:
+
+```
+python -m factorbench run --case makro100 --method example
+```
+
+It solves the full problem: the normal equations J'J with a PARDISO Cholesky, refined against J (the same as the
+`normal` method). Here is the whole file:
+
+```python
+import pypardiso
+import scipy.sparse as sps
+import scipy.sparse.linalg as spla
+
+from factorbench.modelfactorize import RefinedSolver
+
+
+class ExampleSolver(RefinedSolver):
+    name = 'example'
+
+    def _factorize(self):                     # called once; self.A is the Jacobian J (scipy CSR), unscaled
+        # 1. Scaling: Js = diag(dr) A diag(dc), rows to largest element 1, then columns to length 1.
+        #    Without it the refinement stalls at about 1e-7 on MAKRO.
+        self.dr = 1 / abs(self.A).max(axis=1).toarray().ravel()
+        Jr = sps.diags(self.dr) @ self.A                            # rows scaled
+        self.dc = 1 / spla.norm(Jr, axis=0)
+        Js = (Jr @ sps.diags(self.dc)).tocsr()                      # rows and columns scaled
+
+        # 2. The matrix to factorize: the normal equations Js'Js (PARDISO wants only the upper triangle)
+        self.JsT = Js.T.tocsr()
+        self.JsTJs = sps.triu(self.JsT @ Js, format='csr')
+
+        # 3. PARDISO: factorize Js'Js once
+        self.pardiso = pypardiso.PyPardisoSolver(mtype=2)           # <- your library: 2 = symmetric pos. definite
+        self.pardiso.factorize(self.JsTJs)                          # <- your factorization
+
+    def _apply(self, r):                      # an approximate x for J x = r, using the factors
+        # Js'Js y = Js' (dr r) with PARDISO, then undo the column scaling: x = dc y
+        y = self.pardiso.solve(self.JsTJs, self.JsT @ (self.dr * r))   # <- your solve
+        return self.dc * y
+
+    def _release(self):                       # free memory Python does not see (here MKL's)
+        self.pardiso.free_memory(everything=True)
+
+
+def example(A, verbose=False):
+    """the example of README.md: normal equations J'J, PARDISO Cholesky, refined against J"""
+    return ExampleSolver(A, verbose).solve
+
+
+METHODS = {'example': example}
+```
+
+To try your own solver:
+
+1. Copy the file to `factorbench/methods/mine.py`.
+2. In its last line, change the name the benchmark knows it by: `METHODS = {'mine': example}`.
+3. Replace the three lines marked `# <- your ...` with your library: create it, factorize, solve. Step 1 (the
+   scaling) and step 2 (the normal equations) belong to this method: keep them, or drop them if yours factorizes J
+   itself.
+4. Run it and compare with the reference: see Run below.
+
+What the parts do:
+
+* `_factorize` is called once, with J in `self.A` as a scipy CSR matrix.
+* `_apply(r)` is one solve with the factors.
+* `_release` frees memory Python cannot see (MKL's here, GPU memory for a GPU library).
+* `RefinedSolver` provides the rest. Its `solve(b)` calls your `_apply`, computes `b - J x` with the original J, and
+  repeats with the residual until it is below 1e-11 (`--opt refine_tol=1e-6` loosens it). That is why an
+  approximate factorization such as J'J still gives an accurate x.
+
+The function `example(A, verbose=False)` returning a `solve` is ModelFlow's `factorizer=` contract, so the same
+function works there: `model(..., factorizer=example)`. `cudss_methods.py` is a larger example with options.
 
 ## Run
 
+Run the reference method, as MAKRO uses it, then your own, then compare:
+
 ```
-python -m factorbench list                                  # methods and downloaded cases
 python -m factorbench run --case makro100 --method normal --opt "iparm={1: 13}" --opt refine_tol=1e-6
-python -m factorbench run --case makro100 --method cudss_normal --opt hybrid=True
-python -m factorbench run --case makro100 --method cudss --opt matching=MAX_DIAG_PRODUCT
-python -m factorbench compare                               # table of all results/*.json
+python -m factorbench run --case makro100 --method mine
+python -m factorbench compare
 ```
+
+`python -m factorbench list` shows all methods and the downloaded cases.
 
 Each run factorizes J once and solves the 8 right-hand sides in order. It reports for each:
 
@@ -81,48 +172,28 @@ Each run factorizes J once and solves the 8 right-hand sides in order. It report
 The result goes to `results/<case>__<method>__<host>__<time>.json`. To share a result, send the file or open a
 pull request that adds it to `results/published/`.
 
-## Adding a method
+## The methods
 
-A method is a function with ModelFlow's `factorizer=` contract, so anything that works here can be passed to
-ModelFlow unchanged:
+| method | what it does | library | read more |
+|---|---|---|---|
+| `superlu` | LU of J with partial pivoting | SuperLU through scipy | [scipy splu](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.splu.html), [SuperLU](https://portal.nersc.gov/project/sparse/superlu/) |
+| `pardiso` | LU of J with static pivoting (small pivots are perturbed, not swapped) | Intel oneMKL PARDISO through pypardiso | [oneMKL PARDISO](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/onemkl-pardiso-parallel-direct-sparse-solver-iface.html), [pypardiso](https://github.com/haasad/PyPardiso) |
+| `normal` | Cholesky of the normal equations J'J (J scaled first), then refinement against J. What MAKRO uses now | oneMKL PARDISO through pypardiso | [normal equations](https://en.wikipedia.org/wiki/Linear_least_squares), [Cholesky](https://en.wikipedia.org/wiki/Cholesky_decomposition) |
+| `mumps` | LU of J with threshold pivoting and METIS ordering | MUMPS through python-mumps | [MUMPS](https://mumps-solver.org/), [python-mumps](https://gitlab.kwant-project.org/kwant/python-mumps) |
+| `cudss` | LU of J on an NVIDIA GPU | NVIDIA cuDSS through nvmath-python | [cuDSS](https://docs.nvidia.com/cuda/cudss/), [nvmath-python](https://docs.nvidia.com/cuda/nvmath-python/latest/) |
+| `cudss_normal` | Cholesky of J'J on an NVIDIA GPU, refinement against J | NVIDIA cuDSS through nvmath-python | as above |
 
-```python
-def factorize(A, verbose=False, **options):      # A: scipy CSR
-    ...                                          # factorize once
-    return solve                                 # solve(b) -> x, called once per Newton iteration
-```
-
-The easy way is a subclass of `RefinedSolver` (`factorbench/modelfactorize.py`). You implement `_factorize()` and
-`_apply(r)`, and you get iterative refinement against J, GMRES as an alternative (`krylov=True`), stall detection
-and the accuracy checks for free:
-
-```python
-from factorbench.modelfactorize import RefinedSolver
-
-class MySolver(RefinedSolver):
-    name = 'mine'
-    def _factorize(self):              # self.A is J (CSR)
-        self.f = my_library.factorize(self.A)
-    def _apply(self, r):               # an approximate solution of J x = r
-        return self.f.solve(r)
-    def _release(self):                # free GPU / library memory
-        self.f.free()
-
-def mine(A, verbose=False, **options):
-    return MySolver(A, verbose, **options).solve
-
-METHODS = {'mine': mine}
-```
-
-To add it, save it as `factorbench/methods/mine.py` and run `--method mine`. Without copying it into the package,
-use `--method mymodule:mine`. See `factorbench/methods/template.py` and `cudss_methods.py`.
+All of them solve each right-hand side with [iterative refinement](https://en.wikipedia.org/wiki/Iterative_refinement)
+against J. With `--opt krylov=True` they use [GMRES](https://en.wikipedia.org/wiki/Generalized_minimal_residual_method)
+instead, with the factorization as preconditioner. See [LU decomposition](https://en.wikipedia.org/wiki/LU_decomposition)
+for the background.
 
 ## Files
 
 | | |
 |---|---|
 | `factorbench/modelfactorize.py` | verbatim copy of ModelFlow's `modelfactorize.py`: the reference methods (normal, pardiso, mumps) and `RefinedSolver` |
-| `factorbench/methods/` | the methods: `scipy_methods`, `mkl_methods`, `mumps_methods`, `cudss_methods`, `template` |
+| `factorbench/methods/` | the methods: `scipy_methods`, `mkl_methods`, `mumps_methods`, `cudss_methods`, `example` (the example above) |
 | `factorbench/bench.py` | the benchmark and the command line |
 | `get_data.py`, `data_manifest.json` | download of the matrix from the GitHub release |
 | `tools/to_mtx.py` | the case in Matrix Market format, for solvers outside Python |
@@ -135,5 +206,10 @@ use `--method mymodule:mine`. See `factorbench/methods/template.py` and `cudss_m
 `data/makro100/`: `A.npz` (J, scipy CSR), `b_00.npy` ... `b_07.npy`, the reference solutions `x_00.npy` ...
 (normal equations + PARDISO, refined to about 1e-12), `meta.json` (sizes, reference timings), and `names.json`
 (the equation and unknown names of one year; index = year number x 15,472 + position).
+
+The files are NumPy's binary format ([`.npy`](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html),
+one array per file) and scipy's sparse format (`A.npz`: a zip of the CSR arrays `data`, `indices`, `indptr`, read
+with `scipy.sparse.load_npz`). For solvers outside Python, `python tools/to_mtx.py makro100` writes the same case in
+Matrix Market format (`.mtx`) to `data/makro100/mtx/`: 0.28 GB for A, 0.83 GB with all vectors.
 
 The matrix is derived from MAKRO (Copyright (c) 2026 DREAM, MIT licence). Code: MIT licence.
