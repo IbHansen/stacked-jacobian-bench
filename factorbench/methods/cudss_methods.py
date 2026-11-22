@@ -16,7 +16,7 @@ Options (``--opt name=value`` on the command line):
   device_limit='40GiB' device memory limit in hybrid mode
   reordering='NESTED_DISSECTION' | 'AMD' | 'COLAMD' | 'BTF_COLAMD' | 'DEFAULT'
   matching='MAX_DIAG_PRODUCT' | ...   (cudss only) a matching (MC64-like) before the ordering - J has many zero
-                       diagonals (MAKRO: 1/6 of the rows), which static pivoting alone handles badly
+                       diagonals (MAKRO: 26,300 of 1,547,200 rows, about 1/60), which static pivoting alone handles badly
   pivot_eps=1e-13, pivot_type='PIVOT_GLOBAL_ROW' | ...
   ir_steps=0           cuDSS's own iterative refinement steps (factorbench refines anyway)
   refine_tol, krylov   as for the other methods
