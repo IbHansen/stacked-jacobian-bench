@@ -1,0 +1,75 @@
+{
+ "case": "makro100",
+ "method": "pardiso",
+ "options": {
+  "iparm": "{1: 13}"
+ },
+ "n": 1547200,
+ "nnz": 7653248,
+ "when": "2026-11-22T17:25:32",
+ "machine": {
+  "host": "Ibs_P",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "processor": "AMD Ryzen AI 9 HX PRO 370 w/ Radeon 890M",
+  "python": "3.14.10",
+  "packages": {
+   "numpy": "2.5.5",
+   "scipy": "1.18.1",
+   "pypardiso": "0.4.7",
+   "mkl": "2026.2.1"
+  },
+  "memory_gb": 56,
+  "cores_physical": 12,
+  "cores_logical": 24
+ },
+ "rhs": [
+  {
+   "rhs": 0,
+   "error": "ArithmeticError: factorizer='pardiso' can not solve this linear system: relative residual 2.4e+02 after 7 refinements. Use another factorizer",
+   "solve_s": 2.622
+  },
+  {
+   "rhs": 1,
+   "error": "ArithmeticError: factorizer='pardiso' can not solve this linear system: relative residual 3.9e+02 after 3 refinements. Use another factorizer",
+   "solve_s": 1.282
+  },
+  {
+   "rhs": 2,
+   "error": "ArithmeticError: factorizer='pardiso' can not solve this linear system: relative residual 1e+04 after 4 refinements. Use another factorizer",
+   "solve_s": 1.606
+  },
+  {
+   "rhs": 3,
+   "error": "ArithmeticError: factorizer='pardiso' can not solve this linear system: relative residual 1.2e+02 after 6 refinements. Use another factorizer",
+   "solve_s": 2.367
+  },
+  {
+   "rhs": 4,
+   "error": "ArithmeticError: factorizer='pardiso' can not solve this linear system: relative residual 4e+03 after 4 refinements. Use another factorizer",
+   "solve_s": 1.804
+  },
+  {
+   "rhs": 5,
+   "error": "ArithmeticError: factorizer='pardiso' can not solve this linear system: relative residual 1.7e+03 after 3 refinements. Use another factorizer",
+   "solve_s": 1.441
+  },
+  {
+   "rhs": 6,
+   "error": "ArithmeticError: factorizer='pardiso' can not solve this linear system: relative residual 1.1e+03 after 3 refinements. Use another factorizer",
+   "solve_s": 1.463
+  },
+  {
+   "rhs": 7,
+   "error": "ArithmeticError: factorizer='pardiso' can not solve this linear system: relative residual 73 after 5 refinements. Use another factorizer",
+   "solve_s": 2.178
+  }
+ ],
+ "rss_before_gb": 0.33,
+ "factor_s": 14.671,
+ "info": "pardiso: 1,547,200 unknowns, 7,653,248 non-zeros, 14.7 s, iparm {1: 13}",
+ "peak_rss_gb": 5.86,
+ "solve_s_sum": 0,
+ "total_s": 14.671,
+ "relres_max": null,
+ "status": "solve failed"
+}

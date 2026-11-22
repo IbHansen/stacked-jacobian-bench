@@ -1,0 +1,92 @@
+{
+ "case": "makro100",
+ "method": "normal",
+ "options": {
+  "iparm": "{1: 13}",
+  "refine_tol": "1e-06"
+ },
+ "n": 1547200,
+ "nnz": 7653248,
+ "when": "2026-11-22T17:24:30",
+ "machine": {
+  "host": "Ibs_P",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "processor": "AMD Ryzen AI 9 HX PRO 370 w/ Radeon 890M",
+  "python": "3.14.10",
+  "packages": {
+   "numpy": "2.5.5",
+   "scipy": "1.18.1",
+   "pypardiso": "0.4.7",
+   "mkl": "2026.2.1"
+  },
+  "memory_gb": 56,
+  "cores_physical": 12,
+  "cores_logical": 24
+ },
+ "rhs": [
+  {
+   "rhs": 0,
+   "solve_s": 1.391,
+   "relres": 4.620475735675947e-07,
+   "err_ref": 0.02386462130952911,
+   "refinements": 0
+  },
+  {
+   "rhs": 1,
+   "solve_s": 5.17,
+   "relres": 8.933871310353969e-08,
+   "err_ref": 0.00011906174152850981,
+   "refinements": 3
+  },
+  {
+   "rhs": 2,
+   "solve_s": 3.791,
+   "relres": 6.920987276904433e-07,
+   "err_ref": 0.0008928490175054621,
+   "refinements": 2
+  },
+  {
+   "rhs": 3,
+   "solve_s": 1.28,
+   "relres": 7.142327241185117e-07,
+   "err_ref": 0.014010753142636266,
+   "refinements": 0
+  },
+  {
+   "rhs": 4,
+   "solve_s": 2.523,
+   "relres": 4.338128210659402e-07,
+   "err_ref": 0.0009405716473760558,
+   "refinements": 1
+  },
+  {
+   "rhs": 5,
+   "solve_s": 1.311,
+   "relres": 5.00158310143574e-07,
+   "err_ref": 0.014492177851536914,
+   "refinements": 0
+  },
+  {
+   "rhs": 6,
+   "solve_s": 2.521,
+   "relres": 3.755942083469438e-08,
+   "err_ref": 0.0001952764150366058,
+   "refinements": 1
+  },
+  {
+   "rhs": 7,
+   "solve_s": 1.278,
+   "relres": 4.733356631968641e-08,
+   "err_ref": 0.002484536979861084,
+   "refinements": 0
+  }
+ ],
+ "rss_before_gb": 0.33,
+ "factor_s": 34.303,
+ "info": "normal: 1,547,200 unknowns, 7,653,248 non-zeros, 34.3 s, J'J 85,669,778 non-zeros, iparm {1: 13}, refine_tol 1e-06",
+ "peak_rss_gb": 17.15,
+ "solve_s_sum": 19.265,
+ "total_s": 53.568,
+ "relres_max": 7.142327241185117e-07,
+ "status": "ok"
+}

@@ -1,0 +1,39 @@
+{
+ "repo": "IbHansen/stacked-jacobian-bench",
+ "tag": "data-v1",
+ "cases": {
+  "makro100": {
+   "file": "makro100.zip",
+   "bytes": 156545095,
+   "sha256": "99e7cef5bbf9d823865348a261fee6798332552740e58743fe1bd8f99d85238c",
+   "n": 1547200,
+   "nnz": 7653248,
+   "rhs": 8,
+   "periods": [
+    2030,
+    2129
+   ],
+   "files": [
+    "A.npz",
+    "b_00.npy",
+    "b_01.npy",
+    "b_02.npy",
+    "b_03.npy",
+    "b_04.npy",
+    "b_05.npy",
+    "b_06.npy",
+    "b_07.npy",
+    "meta.json",
+    "names.json",
+    "x_00.npy",
+    "x_01.npy",
+    "x_02.npy",
+    "x_03.npy",
+    "x_04.npy",
+    "x_05.npy",
+    "x_06.npy",
+    "x_07.npy"
+   ]
+  }
+ }
+}

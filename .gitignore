@@ -1,0 +1,9 @@
+data/
+release/
+log/
+.venv/
+__pycache__/
+*.egg-info/
+build/
+# results of your own runs; commit selected ones to results/published/
+results/*.json
