@@ -48,25 +48,51 @@ On an H100, H200 or GH200, if possible:
 * Anything we should do differently: ordering, the formulation, cuDSS iterative refinement instead of ours, batched
   or multi-GPU.
 
-## How to run
+## Install
+
+Linux, Python 3.10 or newer. The reference method needs MKL PARDISO, and the cuDSS methods need nvmath-python:
 
 ```
-git clone https://github.com/IbHansen/stacked-jacobian-bench && cd stacked-jacobian-bench
-python -m venv .venv && source .venv/bin/activate
-pip install -e .[pardiso,gpu]          # [gpu13] for CUDA 13
-python get_data.py                     # 150 MB
-python -m factorbench run --case makro100 --method normal --opt "iparm={1: 13}" --opt refine_tol=1e-6   # CPU reference
-python -m factorbench run --case makro100 --method cudss_normal
-python -m factorbench run --case makro100 --method cudss --opt matching=MAX_DIAG_PRODUCT
+git clone https://github.com/IbHansen/stacked-jacobian-bench
+cd stacked-jacobian-bench
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .[pardiso]
+pip install -e .[gpu]
+python get_data.py
+```
+
+For CUDA 13, use `pip install -e .[gpu13]` instead of `.[gpu]`. `get_data.py` downloads the matrix (150 MB) and
+checks it.
+
+## The cuDSS methods
+
+Two methods are ready in `factorbench/methods/cudss_methods.py`:
+
+* `cudss`: LU of J.
+* `cudss_normal`: Cholesky of the scaled normal equations J'J, the same formulation as the reference.
+
+In both, cuDSS factorizes once on the GPU, and each solve is one forward and back substitution there. The benchmark
+then refines each solution against the original J on the CPU, the same way for every method, so the accuracy
+figures are comparable.
+
+**Note:** the adapter was written against nvmath-python 1.0.1 without access to an NVIDIA GPU, so it has not run.
+Please correct it as needed. To try another formulation or library, README.md, "Create a solver", has a complete
+example file. A method is one function, `solve = mine(A)`, then `x = solve(b)` for each right-hand side.
+
+## Run
+
+The CPU reference as MAKRO uses it, the two cuDSS methods, then the comparison:
+
+```
+python -m factorbench run --case makro100 --method normal --opt "iparm={1: 13}" --opt refine_tol=1e-6
+python -m factorbench run --case makro100 --method cudss_normal --opt refine_tol=1e-6
+python -m factorbench run --case makro100 --method cudss --opt matching=MAX_DIAG_PRODUCT --opt refine_tol=1e-6
 python -m factorbench compare
 ```
 
-Options are passed as `--opt name=value`. See the top of `factorbench/methods/cudss_methods.py`: `hybrid`,
-`device_limit`, `reordering`, `matching`, `pivot_type`, `pivot_eps`, `ir_steps`, `refine_tol`.
-
-**Note:** `factorbench/methods/cudss_methods.py` was written against nvmath-python 1.0.1 without access to an NVIDIA
-GPU, so it has not run. Please correct it as needed. Any method with the contract `factorize(A) -> solve(b)` plugs in
-(see README.md), and accuracy is always measured by the benchmark itself as `max|b - J x| / max|b|`. Newton needs
-about 1e-6.
+Options are passed as `--opt name=value`. The cuDSS options are listed at the top of `cudss_methods.py`:
+`hybrid`, `device_limit`, `reordering`, `matching`, `pivot_type`, `pivot_eps`, `ir_steps`, `refine_tol`,
+`krylov`. The benchmark measures the accuracy itself, as `max|b - J x| / max|b|`; Newton needs about 1e-6.
 
 Results are written to `results/*.json`. We would be glad to get those files back, with any changes to the adapter.
